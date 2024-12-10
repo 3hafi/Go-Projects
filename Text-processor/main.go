@@ -40,6 +40,23 @@ func main() {
 			words = append(words[:i], words[i+1:]...)    // still unsure about, remove "(hex)" from the slice
 			i--
 		}
+		//Bin to Din
+		if words[i] == "(bin)" {
+			binValue := words[i-1]
+
+			if _, err := strconv.ParseInt(binValue, 2, 64); err != nil {
+				continue
+			}
+
+			decimalValue, err := strconv.ParseInt(binValue, 2, 64)
+			if err != nil {
+				fmt.Println("Error processing BIN", err)
+				return
+			}
+			words[i-1] = fmt.Sprintf("%d", decimalValue)
+			words = append(words[:i], words[i+1:]...)
+			i--
+		}
 	}
 
 	modifiedData := strings.Join(words, " ")
