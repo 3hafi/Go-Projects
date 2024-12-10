@@ -1,110 +1,97 @@
 package main
 
 import (
-	"fmt"
-	"os"
-	"strconv"
-	"strings"
+	"fmt"       // Importing the fmt package for formatted input/output
+	"os"        // Provides functions to work with operating system (files, args, etc.)
+	"strconv"   // Provides conversion functions between strings and numbers
+	"strings"   // Provides string manipulation functions (splitting, joining, etc.)
 )
 
 func main() {
-	// reading inputfile
-	data, err := os.ReadFile(os.Args[1])
-	if err != nil {
-		fmt.Println(err)
-		return
+	// Reading the input file (passed as the first command-line argument)
+	data, err := os.ReadFile(os.Args[1]) // os.ReadFile reads the file content into a byte slice ([]byte)
+	// os.Args[1] refers to the first command-line argument provided (the file path).
+	// err captures any errors during file reading.
+	if err != nil { // Check if an error occurred (err != nil means an error exists).
+		fmt.Println(err) // Print the error message to the console.
+		return           // Exit the program if there's an error.
 	}
 
-	words := strings.Fields(string(data))
+	// Splitting the file content into words
+	words := strings.Fields(string(data)) // Converts byte slice to string and splits into a slice of words ([]string).
+	// strings.Fields splits based on any whitespace (spaces, tabs, newlines).
 
-	for _, word := range words {
-		fmt.Println(word)
+	// Iterating over all words to print them
+	for _, word := range words { // Loop through each word in the slice. '_' ignores the index.
+		fmt.Println(word) // Print each word to the console.
 	}
 
-	// identify patterns
-	for i := 0; i < len(words); i++ {
-		if words[i] == "(hex)" {
-			hexValue := words[i-1]
+	// Identifying and processing patterns (e.g., "(hex)" and "(bin)")
+	for i := 0; i < len(words); i++ { // Standard for loop iterating by index (i).
+		if words[i] == "(hex)" { // Check if the current word is "(hex)".
+			hexValue := words[i-1] // The preceding word is expected to be the hexadecimal value.
 
+			// Validate the hexadecimal value (ensure it's valid before processing)
 			if _, err := strconv.ParseInt(hexValue, 16, 64); err != nil {
-				continue
+				// strconv.ParseInt attempts to convert hexValue to a decimal integer (base 16).
+				// The underscore `_` ignores the resulting value, as we only care about the error.
+				continue // Skip this iteration if the hex value is invalid.
 			}
 
-			// converting hexvalue(string) to a decimal number
-			decimalValue, err := strconv.ParseInt(hexValue, 16, 64)
-			if err != nil {
-				fmt.Println("Error processing HEX", err)
+			// Convert the hexadecimal string to a decimal number
+			decimalValue, err := strconv.ParseInt(hexValue, 16, 64) // Convert valid hex to a decimal integer.
+			if err != nil { // Handle any unexpected errors (rare if validation passed earlier).
+				fmt.Println("Error processing HEX", err) // Print error and exit.
 				return
 			}
-			words[i-1] = fmt.Sprintf("%d", decimalValue) //replacing previous word with dec value
-			words = append(words[:i], words[i+1:]...)    // still unsure about, remove "(hex)" from the slice
-			i--
-		}
-		//Bin to Din
-		if words[i] == "(bin)" {
-			binValue := words[i-1]
 
+			// Replace the original hex value with the decimal equivalent
+			words[i-1] = fmt.Sprintf("%d", decimalValue) // Format the decimalValue as a string and replace it in the slice.
+			words = append(words[:i], words[i+1:]...)    // Remove the "(hex)" by combining parts of the slice.
+			// words[:i] gives all elements before i.
+			// words[i+1:] gives all elements after i.
+			// The `...` expands the second slice into individual elements to append.
+			i-- // Decrement the index to reprocess the slice after modification.
+		}
+
+		if words[i] == "(bin)" { // Check if the current word is "(bin)".
+			binValue := words[i-1] // The preceding word is expected to be the binary value.
+
+			// Validate the binary value
 			if _, err := strconv.ParseInt(binValue, 2, 64); err != nil {
-				continue
+				// strconv.ParseInt attempts to convert binValue to a decimal integer (base 2).
+				continue // Skip this iteration if the binary value is invalid.
 			}
 
-			decimalValue, err := strconv.ParseInt(binValue, 2, 64)
-			if err != nil {
-				fmt.Println("Error processing BIN", err)
+			// Convert the binary string to a decimal number
+			decimalValue, err := strconv.ParseInt(binValue, 2, 64) // Convert valid binary to a decimal integer.
+			if err != nil { // Handle any unexpected errors (rare if validation passed earlier).
+				fmt.Println("Error processing BIN", err) // Print error and exit.
 				return
 			}
-			words[i-1] = fmt.Sprintf("%d", decimalValue)
-			words = append(words[:i], words[i+1:]...)
-			i--
+
+			// Replace the original binary value with the decimal equivalent
+			words[i-1] = fmt.Sprintf("%d", decimalValue) // Format the decimalValue as a string and replace it in the slice.
+			words = append(words[:i], words[i+1:]...)    // Remove the "(bin)" by combining parts of the slice.
+			i-- // Decrement the index to reprocess the slice after modification.
 		}
 	}
 
-	modifiedData := strings.Join(words, " ")
-	fmt.Println("Modified data:", modifiedData)
-	// writing outputfile
-	err = os.WriteFile(os.Args[2], []byte(modifiedData), 0644)
-	if err != nil {
-		fmt.Println(err)
-		return
+	// Join the modified words back into a single string
+	modifiedData := strings.Join(words, " ") // strings.Join combines all words with a single space between them.
+
+	// Output the modified data
+	fmt.Println("Modified data:", modifiedData) // Print the final modified data to the console.
+
+	// Write the modified data to the output file (specified as the second command-line argument)
+	err = os.WriteFile(os.Args[2], []byte(modifiedData), 0644) // os.WriteFile writes data to a file.
+	// os.Args[2] is the output file path provided via the command line.
+	// []byte(modifiedData) converts the string back to a byte slice for writing.
+	// 0644 sets file permissions (-rw-r--r-- in Unix).
+	if err != nil { // Check for errors during file writing.
+		fmt.Println(err) // Print the error message if writing fails.
+		return           // Exit the program.
 	}
-	fmt.Println("File processing complete!")
+
+	fmt.Println("File processing complete!") // Indicate successful completion.
 }
-
-/*
-package main
-
-import (
-	"fmt"
-	"io"
-)
-
-func main() {
-	if len(os.Args) != 3 {
-		fmt.Println(("incorrect argument, wanted 2 but got: "), len(os.Args))
-	}
-
-	if len(os.Args) ! = 2 {
-		// err and use func isNotExist
-	}
-}
-// error checking
-// function to check correct os.Args commandline i.e filename
-
-// function / err to check 2nd filename
-
-//
-
-
-/*modules:
-1)Input/Output Handling: Read input from a file, write output to another file.
-
-2)Text Processing: Perform modifications on the input text.
-	- Hexadecimal to decimal conversion
-	- Binary to decimal conversion
-	- Case conversions (uppercase, lowercase, capitalized)
-	- Punctuation formatting
-	- Apostrophe handling
-	- “A” to “An” conversion
-	- Error Handling: Handle errors and edge cases
-
-*/
