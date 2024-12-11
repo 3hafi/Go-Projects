@@ -1,5 +1,5 @@
  Features
-set of text transformations, including:
+set of text-processor tool, including:
 
 - Hex to Decimal: Converts hex numbers (marked by (hex)) to decimal.
 - Binary to Decimal: Converts binary numbers (marked by (bin)) to decimal.
@@ -12,3 +12,4 @@ set of text transformations, including:
 - Article Correction: Changes a to an before words starting with a vowel or h.
 
 (First project Started on 2 DEC 2024.)
+Project for learning Golang 
