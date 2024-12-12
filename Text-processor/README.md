@@ -1,4 +1,4 @@
- Features
+Features
 set of text-processor tool, including:
 
 - Hex to Decimal: Converts hex numbers (marked by (hex)) to decimal.
