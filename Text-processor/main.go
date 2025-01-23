@@ -1,97 +1,342 @@
 package main
 
 import (
-	"fmt"       // Importing the fmt package for formatted input/output
-	"os"        // Provides functions to work with operating system (files, args, etc.)
-	"strconv"   // Provides conversion functions between strings and numbers
-	"strings"   // Provides string manipulation functions (splitting, joining, etc.)
+	"fmt"
+	"log"
+	"os"
+	"strconv"
+	"strings"
+	"unicode"
 )
 
 func main() {
-	// Reading the input file (passed as the first command-line argument)
-	data, err := os.ReadFile(os.Args[1]) // os.ReadFile reads the file content into a byte slice ([]byte)
-	// os.Args[1] refers to the first command-line argument provided (the file path).
-	// err captures any errors during file reading.
-	if err != nil { // Check if an error occurred (err != nil means an error exists).
-		fmt.Println(err) // Print the error message to the console.
-		return           // Exit the program if there's an error.
-	}
+	if len(os.Args) == 3 {
+		// Read Data from the file... okay if _, err := os.Stat(os.Args[1]); os.IsNotExist(err) {
+		Data := ReadFileToString(os.Args[1])
 
-	// Splitting the file content into words
-	words := strings.Fields(string(data)) // Converts byte slice to string and splits into a slice of words ([]string).
-	// strings.Fields splits based on any whitespace (spaces, tabs, newlines).
+		// Identify positions of brackets
+		startBrackets := indexOfStartBrackets(Data)
+		endBrackets := indexOfEndBrackets(Data)
+		totalBrackets := len(startBrackets)
 
-	// Iterating over all words to print them
-	for _, word := range words { // Loop through each word in the slice. '_' ignores the index.
-		fmt.Println(word) // Print each word to the console.
-	}
-
-	// Identifying and processing patterns (e.g., "(hex)" and "(bin)")
-	for i := 0; i < len(words); i++ { // Standard for loop iterating by index (i).
-		if words[i] == "(hex)" { // Check if the current word is "(hex)".
-			hexValue := words[i-1] // The preceding word is expected to be the hexadecimal value.
-
-			// Validate the hexadecimal value (ensure it's valid before processing)
-			if _, err := strconv.ParseInt(hexValue, 16, 64); err != nil {
-				// strconv.ParseInt attempts to convert hexValue to a decimal integer (base 16).
-				// The underscore `_` ignores the resulting value, as we only care about the error.
-				continue // Skip this iteration if the hex value is invalid.
+		// Iterate through all bracketed instructions
+		for i := 0; i < totalBrackets; i++ {
+			// Extract Data inside brackets
+			insideBrackets := Data[startBrackets[i]+1 : endBrackets[i]]
+			// Get the transformation and number
+			transformation, _ := returnSubStrAndNum(insideBrackets)
+			// Apply corresponding transformations
+			switch transformation {
+			case "hex":
+			Data = hexToDecimal(Data)
+			case "bin":
+			Data = binaryToDecimal(Data)
+			case "up":
+				Data = up(Data)
+			case "low":
+				Data = low(Data)
+			case "cap":
+				Data = cap(Data)
 			}
-
-			// Convert the hexadecimal string to a decimal number
-			decimalValue, err := strconv.ParseInt(hexValue, 16, 64) // Convert valid hex to a decimal integer.
-			if err != nil { // Handle any unexpected errors (rare if validation passed earlier).
-				fmt.Println("Error processing HEX", err) // Print error and exit.
-				return
-			}
-
-			// Replace the original hex value with the decimal equivalent
-			words[i-1] = fmt.Sprintf("%d", decimalValue) // Format the decimalValue as a string and replace it in the slice.
-			words = append(words[:i], words[i+1:]...)    // Remove the "(hex)" by combining parts of the slice.
-			// words[:i] gives all elements before i.
-			// words[i+1:] gives all elements after i.
-			// The `...` expands the second slice into individual elements to append.
-			i-- // Decrement the index to reprocess the slice after modification.
+			// Recheck brackets for next iteration
+			startBrackets = indexOfStartBrackets(Data)
+			endBrackets = indexOfEndBrackets(Data)
 		}
 
-		if words[i] == "(bin)" { // Check if the current word is "(bin)".
-			binValue := words[i-1] // The preceding word is expected to be the binary value.
+		// Clean up brackets and apply additional transformations
+		Data = removeBracketsData(Data)
+		Data = transformAToAn(Data)
+		Data = fPunctuation(Data)
+		Data = fPunctuation2(Data)
 
-			// Validate the binary value
-			if _, err := strconv.ParseInt(binValue, 2, 64); err != nil {
-				// strconv.ParseInt attempts to convert binValue to a decimal integer (base 2).
-				continue // Skip this iteration if the binary value is invalid.
+		// Output the result and save it to a new file
+		fmt.Println("\n", Data)
+		StringToWriteFile(os.Args[2], Data)
+	}
+}
+
+func ReadFileToString(s string) string {
+	r, err := os.ReadFile(os.Args[1]) // just pass the file name
+	if err != nil {
+		log.Fatal(err)
+	}
+	return string(r) // convert Data to a 'string'
+}
+
+func StringToWriteFile(filename, myString string) {
+	f, err := os.Create(filename)
+	if err != nil {
+		fmt.Println(err)
+	}
+	defer f.Close()
+	_, err2 := f.WriteString(myString)
+	if err2 != nil {
+		fmt.Println(err2)
+	}
+}
+
+func hexToDecimal(s string) string {
+	words := strings.Fields(s)
+	for i := 0; i < len(words); i++ {
+		if words[i] == "(hex)" && i > 0 {
+			hexValue := words[i-1]
+			decimalNum, err := strconv.ParseInt(hexValue, 16, 64)
+			if err == nil {
+				words[i-1] = fmt.Sprintf("%d", decimalNum)
 			}
-
-			// Convert the binary string to a decimal number
-			decimalValue, err := strconv.ParseInt(binValue, 2, 64) // Convert valid binary to a decimal integer.
-			if err != nil { // Handle any unexpected errors (rare if validation passed earlier).
-				fmt.Println("Error processing BIN", err) // Print error and exit.
-				return
-			}
-
-			// Replace the original binary value with the decimal equivalent
-			words[i-1] = fmt.Sprintf("%d", decimalValue) // Format the decimalValue as a string and replace it in the slice.
-			words = append(words[:i], words[i+1:]...)    // Remove the "(bin)" by combining parts of the slice.
-			i-- // Decrement the index to reprocess the slice after modification.
 		}
 	}
 
-	// Join the modified words back into a single string
-	modifiedData := strings.Join(words, " ") // strings.Join combines all words with a single space between them.
+	return strings.Join(words, " ")
+}
 
-	// Output the modified data
-	fmt.Println("Modified data:", modifiedData) // Print the final modified data to the console.
-
-	// Write the modified data to the output file (specified as the second command-line argument)
-	err = os.WriteFile(os.Args[2], []byte(modifiedData), 0644) // os.WriteFile writes data to a file.
-	// os.Args[2] is the output file path provided via the command line.
-	// []byte(modifiedData) converts the string back to a byte slice for writing.
-	// 0644 sets file permissions (-rw-r--r-- in Unix).
-	if err != nil { // Check for errors during file writing.
-		fmt.Println(err) // Print the error message if writing fails.
-		return           // Exit the program.
+func binaryToDecimal(s string) string {
+	words := strings.Fields(s)
+	for i := 0; i < len(words); i++ {
+		if words[i] == "(bin)" && i > 0 {
+			binValue := words[i-1]
+			decimalNum, err := strconv.ParseInt(binValue, 2, 64)
+			if err == nil {
+				words[i-1] = fmt.Sprintf("%d", decimalNum)
+			}
+		}
 	}
 
-	fmt.Println("File processing complete!") // Indicate successful completion.
+	return strings.Join(words, " ")
+}
+
+func up(s string) string {
+	words := strings.Fields(s)
+	for i := 0; i < len(words); i++ {
+		if strings.HasPrefix(words[i], "(up)") {
+			startIndex := i - 1
+			for j := startIndex; j < i; j++ {
+				words[j] = strings.ToUpper(words[j])
+			}
+		}
+		if strings.HasPrefix(words[i], "(up,") {
+			parts := strings.Split(words[i+1], ")")
+			if len(parts) >= 2 {
+				number, err := strconv.Atoi(strings.TrimSuffix(parts[0], " "))
+				if err == nil {
+					startIndex := i - number
+					for j := startIndex; j < i; j++ {
+						words[j] = strings.ToUpper(words[j])
+					}
+				}
+			}
+		}
+	}
+	return strings.Join(words, " ")
+}
+
+func low(s string) string {
+	words := strings.Fields(s)
+	for i := 0; i < len(words); i++ {
+		if strings.HasPrefix(words[i], "(low)") {
+			startIndex := i - 1
+			for j := startIndex; j < i; j++ {
+				words[j] = strings.ToLower(words[j])
+			}
+		}
+		if strings.HasPrefix(words[i], "(low,") {
+			parts := strings.Split(words[i+1], ")")
+			if len(parts) >= 2 {
+				number, err := strconv.Atoi(strings.TrimSuffix(parts[0], " "))
+				if err == nil {
+					startIndex := i - number
+					for j := startIndex; j < i; j++ {
+						words[j] = strings.ToLower(words[j])
+					}
+				}
+			}
+		}
+	}
+	return strings.Join(words, " ")
+}
+
+func cap(s string) string {
+	words := strings.Fields(s)
+	for i := 0; i < len(words); i++ {
+		if strings.HasPrefix(words[i], "(cap)") {
+			startIndex := i - 1
+			// Loop through the words and capitalize them
+			for j := startIndex; j < i; j++ {
+				words[j] = strings.Title(words[j])
+			}
+		}
+		if strings.HasPrefix(words[i], "(cap,") {
+			parts := strings.Split(words[i+1], ")")
+			if len(parts) >= 2 {
+				// strings.TrimSuffix removes the space at the end of the string
+				number, err := strconv.Atoi(strings.TrimSuffix(parts[0], " "))
+				if err == nil {
+					startIndex := i - number
+					for j := startIndex; j < i; j++ {
+						words[j] = strings.Title(words[j])
+					}
+				}
+			}
+		}
+	}
+	return strings.Join(words, " ")
+}
+
+func removeBracketsData(input string) string {
+	var result string
+	inBracket := false
+
+	for _, char := range input {
+		if char == '(' {
+			inBracket = true
+		} else if char == ')' {
+			inBracket = false
+		} else if !inBracket {
+			// append outside characters
+			result += string(char)
+		}
+	}
+
+	return result
+}
+
+func fPunctuation(input string) string {
+	var output []rune
+	var prevRune rune
+
+	for index, r := range input {
+
+		if r == '.' || r == ',' || r == '!' || r == '?' || r == ':' || r == ';' {
+			if prevRune == ' ' {
+				// Remove the space before punctuation
+				output = output[:len(output)-1]
+			}
+			output = append(output, r)
+			if index != len(input)-1 {
+				if !unicode.IsPunct(rune(input[index+1])) && rune(input[index+1]) != ' ' {
+					output = append(output, ' ') // Add a space after punctuation
+				}
+			}
+
+		} else {
+			output = append(output, r)
+		}
+
+		prevRune = r
+	}
+
+	return string(output)
+}
+
+func fPunctuation2(input string) string {
+	var output []rune
+	var prevRune rune
+
+	for _, r := range input {
+
+		if r == '\'' || r == ' ' {
+			if prevRune == ' ' && r == '\'' {
+				// Remove the space before punctuation
+				output = output[:len(output)-1]
+				output = append(output, r)
+			} else if prevRune == '\'' && r == ' ' {
+			} else {
+				output = append(output, r)
+			}
+		} else {
+			output = append(output, r)
+		}
+		if r == ':' && (len(output) > 1 && output[len(output)-1] != ' ') {
+			output = append(output, ' ')
+		}
+		prevRune = r
+	}
+	return string(output)
+}
+
+func returnSubStrAndNum(newStr string) (string, int) {
+	if hasComma(newStr) {
+		tempStr := strings.Split(newStr, " ")
+		split, err := strconv.Atoi(tempStr[1])
+		if err != nil {
+			fmt.Println(err)
+		}
+		returnString := strings.Split(tempStr[0], ",")
+		return returnString[0], split
+	} else {
+		return newStr, 1
+	}
+}
+
+func indexOfStartBrackets(s string) []int {
+	var ind []int
+	for index, v := range s {
+		if v == '(' {
+			ind = append(ind, index)
+		}
+	}
+	return ind
+}
+
+func indexOfEndBrackets(s string) []int {
+	var ind []int
+	for index, v := range s {
+		if v == ')' {
+			ind = append(ind, index)
+		}
+	}
+	return ind
+}
+
+func hasComma(s string) bool {
+	for _, v := range s {
+		if v == ',' {
+			return true
+		}
+	}
+	return false
+}
+
+func whatChangeAtoAn(word string) bool {
+	if len(word) == 0 {
+		return false
+	}
+	firstChar := rune(word[0])
+	vowels := "aeiouAEIOU"
+	return strings.ContainsRune(vowels, firstChar) || firstChar == 'h' || firstChar == 'H'
+}
+
+func transformAToAn(input string) string {
+	words := strings.Fields(input) // Split the input into words
+	result := make([]string, 0, len(words))
+
+	inQuotes := false // Flag to track if we're inside apostrophes
+
+	for i := 0; i < len(words); i++ {
+		currentWord := words[i]
+		// Check for words inside apostrophes (quoted parts)
+		if strings.HasPrefix(currentWord, "'") && !strings.HasSuffix(currentWord, "'") {
+			inQuotes = true
+		}
+		if inQuotes {
+			if strings.HasSuffix(currentWord, "'") {
+				inQuotes = false
+			}
+			result = append(result, currentWord)
+			continue
+		}
+		// Check for standalone "a" or "A" and next word starting with a vowel or 'h'
+		if (currentWord == "a" || currentWord == "A") && i+1 < len(words) {
+			nextWord := words[i+1]
+			if whatChangeAtoAn(nextWord) {
+				if currentWord == "a" {
+					currentWord = "an"
+				} else {
+					currentWord = "An"
+				}
+			}
+		}
+		result = append(result, currentWord)
+	}
+	return strings.Join(result, " ")
 }
