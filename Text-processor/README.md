@@ -1,3 +1,8 @@
+to run:
+go run . sample.txt result.txt
+(in terminal. Put the text to be parse in sample.txt)
+
+
 Features
 set of text-processor tool, including:
 
